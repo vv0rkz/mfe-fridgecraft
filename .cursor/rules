@@ -1,0 +1,152 @@
+# FridgeCraft — Cursor Rules
+
+## Что это за проект
+
+Микрофронтенд платформа для подбора рецептов и заказа продуктов.
+Монорепо на pnpm. Windows. Module Federation (Webpack 5).
+
+## Структура репо
+
+```
+fridgecraft/
+├── apps/
+│   ├── shell/          # Host, порт 3000 — роутинг + оркестрация событий
+│   ├── mf-recipes/     # Remote, порт 3001 — каталог и редактор рецептов
+│   ├── mf-cart/        # Remote, порт 3002 — корзина и заказ
+│   └── mf-craft/       # Remote, порт 3003 — CraftMode
+├── packages/
+│   └── ui-kit/         # npm-пакет (@fridgecraft/ui-kit), Storybook
+├── docs/
+│   ├── TASKS.md        # Атомарные задачи по версиям
+│   └── ARCHITECTURE.md # Архитектурные решения
+└── .cursor/
+    └── rules           # Этот файл
+```
+
+## Стек
+
+| Где | Что | Зачем |
+|-----|-----|-------|
+| Все | React 18 + TypeScript | Базовый стек |
+| Все | Module Federation | Независимый деплой remotes |
+| mf-recipes | GraphQL + Apollo Client | Rich-data рецептов (вложенные сущности) |
+| mf-cart, mf-craft | RTK Query | Кэш + Redux стейт корзины |
+| mf-recipes | React Hook Form | Динамические формы (fieldArrays) |
+| Все | MSW | Моки вместо реального API |
+| ui-kit | Storybook | Документация компонентов |
+
+## Коммуникация между микрофронтами
+
+Remotes НЕ общаются напрямую. Только через shell.
+
+```
+mf-recipes → window.dispatchEvent('fridgecraft:add-to-cart') → shell → mf-cart
+mf-craft   → window.dispatchEvent('fridgecraft:add-to-cart') → shell → mf-cart
+```
+
+shell ловит события и координирует. localStorage как временное хранилище для MVP.
+
+## Правила для Cursor при генерации кода
+
+### Всегда
+- TypeScript строгий (strict: true в tsconfig)
+- Функциональные компоненты + hooks, никаких классов
+- CSS Modules для стилей (*.module.css), не inline styles
+- Именование: PascalCase для компонентов, camelCase для функций/переменных
+- Импорты ui-kit: `import { Button } from '@fridgecraft/ui-kit'`
+
+### Никогда
+- Не создавай BrowserRouter в remote — он уже в shell
+- Не импортируй из других remotes напрямую (только через события)
+- Не пиши логику в index.ts — только `import('./bootstrap')`
+- Не используй any в TypeScript
+
+### Структура компонента (шаблон)
+```tsx
+// ComponentName.tsx
+import styles from './ComponentName.module.css';
+
+interface ComponentNameProps {
+  // пропсы
+}
+
+export function ComponentName({ }: ComponentNameProps) {
+  // хуки вверху
+  // обработчики
+  // рендер
+}
+```
+
+### Структура MSW handler (шаблон)
+```ts
+// handlers.ts
+import { http, HttpResponse } from 'msw';
+
+export const handlers = [
+  http.get('/api/endpoint', () => {
+    return HttpResponse.json({ /* данные */ });
+  }),
+];
+```
+
+### Структура RTK Query endpoint (шаблон)
+```ts
+// api/someApi.ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+export const someApi = createApi({
+  reducerPath: 'someApi',
+  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  endpoints: (builder) => ({
+    getSomething: builder.query<ResponseType, void>({
+      query: () => '/something',
+    }),
+  }),
+});
+```
+
+## Цвета
+
+- Primary: #22C55E
+- Background: #F7F8FA
+- Surface: #FFFFFF
+- Border: #E5E7EB
+- Text: #1A1A2E
+- Text Secondary: #6B7280
+
+## Управление проектом: @vv0rkz/js-template
+
+Инструмент уже установлен и инициализирован. Все команды через `pnpm run _`.
+
+### Задачи и баги
+```bash
+pnpm run _ tasks                        # список открытых задач (GitHub Issues)
+pnpm run _ create-task "Название"       # создать задачу
+pnpm run _ bugs                         # список багов
+pnpm run _ create-bug "Описание"        # создать баг
+pnpm run _ all-issues                   # все открытые issues
+```
+
+### Релиз
+```bash
+pnpm run _ changelog                    # сгенерировать changelog
+pnpm run _ release                      # полный релиз (changelog + README)
+pnpm run _ push-release                 # запушить релиз в main
+```
+
+### Формат коммитов (commitlint — обязателен)
+- `feat:` — новая функция
+- `fix:` — исправление бага
+- `docs:` — документация
+- `refactor:` — рефакторинг
+- `perf:` — производительность
+- `chore:` — зависимости, конфиги
+
+### Правило работы с задачами
+- Перед началом новой версии → `pnpm run _ create-task "v0.2 Webpack + MF"`
+- После завершения версии → `pnpm run _ release`
+- Нашёл баг → `pnpm run _ create-bug "Описание"`
+
+## Текущий статус
+
+Смотри TASKS.md для текущей задачи.

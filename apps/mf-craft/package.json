@@ -1,0 +1,9 @@
+{
+  "name": "@fridgecraft/mf-craft",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'mf-craft: no dev server yet'",
+    "build": "echo 'mf-craft: no build yet'"
+  }
+}

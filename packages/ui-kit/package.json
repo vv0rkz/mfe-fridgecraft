@@ -1,0 +1,9 @@
+{
+  "name": "@fridgecraft/ui-kit",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "echo 'ui-kit: no dev server'",
+    "build": "tsc"
+  }
+}

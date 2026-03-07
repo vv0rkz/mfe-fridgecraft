@@ -1,0 +1,22 @@
+{
+  "name": "mfe-fridgecraft",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm --parallel -r build",
+    "lint": "pnpm -r lint",
+    "prepare": "husky",
+    "jst": "jst",
+    "_": "jst"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "@vv0rkz/js-template": "^1.4.0",
+    "changelogen": "^0.6.2",
+    "husky": "^9.1.7",
+    "kill-port": "^2.0.1"
+  },
+  "type": "module"
+}
