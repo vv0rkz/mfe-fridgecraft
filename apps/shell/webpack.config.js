@@ -5,8 +5,13 @@ const path = require('path')
 module.exports = {
   entry: path.resolve(__dirname, 'src/index.ts'),
   mode: 'development',
+  devtool: 'eval-cheap-module-source-map',
   output: {
     publicPath: 'http://localhost:3000/',
+  },
+  optimization: {
+    moduleIds: 'named',
+    chunkIds: 'named',
   },
   devServer: {
     port: 3000,
@@ -35,13 +40,17 @@ module.exports = {
         },
         exclude: /node_modules/,
       },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader'],
+      },
     ],
   },
   plugins: [
     new ModuleFederationPlugin({
       name: 'shell',
       remotes: {
-        recipes: 'recipes@http://localhost:3001/mf-manifest.json',
+        recipes: 'recipes@http://localhost:3001/remoteEntry.js',
       },
       shared: {
         react: { singleton: true, requiredVersion: '^19.0.0' },
