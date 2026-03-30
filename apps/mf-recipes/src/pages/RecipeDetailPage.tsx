@@ -1,15 +1,10 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { RECIPES } from '../data/recipes'
+import { Link, useParams } from 'react-router-dom'
 import { getItemInfo } from '../data/items'
+import { RECIPES } from '../data/recipes'
+import { useInventoryStore } from '../shared/useInventoryStore'
 import type { Recipe } from '../types'
 import * as styles from './RecipeDetailPage.module.css'
-
-// TODO: подключить useInventoryStore — have/need в чеклисте, Craft button → removeItem + addItem
-const MOCK_INVENTORY: Record<string, number> = {
-  wheat: 5,
-  potato: 2,
-}
 
 function CraftingPattern({ pattern }: { pattern: (string | null)[] }) {
   return (
@@ -26,12 +21,12 @@ function CraftingPattern({ pattern }: { pattern: (string | null)[] }) {
   )
 }
 
-function IngredientChecklist({ recipe }: { recipe: Recipe }) {
+function IngredientChecklist({ recipe, getItemCount }: { recipe: Recipe; getItemCount: (item: string) => number }) {
   return (
     <ul className={styles.ingredientList}>
       {recipe.ingredients.map(({ item, count }) => {
         const info = getItemInfo(item)
-        const have = MOCK_INVENTORY[item] ?? 0
+        const have = getItemCount(item) ?? 0
         const ok = have >= count
         return (
           <li key={item} className={ok ? styles.ingredientOk : styles.ingredientMissing}>
@@ -48,7 +43,8 @@ function IngredientChecklist({ recipe }: { recipe: Recipe }) {
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [imageError, setImageError] = useState(false)
-  const recipe = RECIPES.find(r => r.id === id)
+  const recipe = RECIPES.find((r) => r.id === id)
+  const { getItemCount, hasItems, craftRecipe, isRecipeKnown } = useInventoryStore()
 
   if (!recipe) {
     return (
@@ -59,22 +55,46 @@ export default function RecipeDetailPage() {
     )
   }
 
-  const canCraft = recipe.ingredients.every(
-    ({ item, count }) => (MOCK_INVENTORY[item] ?? 0) >= count
-  )
-  const firstMissing = recipe.ingredients.find(
-    ({ item, count }) => (MOCK_INVENTORY[item] ?? 0) < count
-  )
+  const isKnown = isRecipeKnown(recipe.id)
+
+  if (!isKnown) {
+    return (
+      <div className={styles.page}>
+        <p>Recipe not discovered yet</p>
+        <Link to="/">← Back to Recipe Book</Link>
+      </div>
+    )
+  }
+
+  const canCraft = hasItems(recipe.ingredients)
+
+  const firstMissing = recipe.ingredients.find(({ item, count }) => {
+    return getItemCount(item) < count
+  })
+  //
+  // Временный mock-расчет оставить только до тех пор, пока bridge еще не реализован.
+  // const canCraft = recipe.ingredients.every(({ item, count }) => (MOCK_INVENTORY[item] ?? 0) >= count)
+  // const firstMissing = recipe.ingredients.find(({ item, count }) => (MOCK_INVENTORY[item] ?? 0) < count)
   const firstMissingInfo = firstMissing ? getItemInfo(firstMissing.item) : null
   const statusBadge = canCraft
     ? '✅ Ready to craft'
     : firstMissing
-      ? `❌ Need: ${firstMissingInfo?.emoji ?? ''} ${firstMissingInfo?.name ?? firstMissing.item} ×${firstMissing.count - (MOCK_INVENTORY[firstMissing.item] ?? 0)}`
+      ? `❌ Need: ${firstMissingInfo?.emoji ?? ''} ${firstMissingInfo?.name ?? firstMissing.item} ×${firstMissing.count - getItemCount(firstMissing.item)}`
       : '❌ Missing ingredients'
+
+  function handleCraftRecipe(r: Recipe) {
+    craftRecipe({
+      recipeId: r.id,
+      consumes: r.ingredients,
+      produces: [{ item: r.id, count: 1 }],
+    })
+  }
 
   return (
     <div className={styles.page}>
-      <Link to="/" className={styles.backLink}>← Back to Recipe Book</Link>
+      <Link to="/" className={styles.backLink}>
+        ← Back to Recipe Book
+      </Link>
 
       <div className={styles.layout}>
         <div className={styles.leftColumn}>
@@ -90,7 +110,9 @@ export default function RecipeDetailPage() {
               />
             )}
           </div>
-          <h1 className={styles.title}>{recipe.name} {recipe.emoji}</h1>
+          <h1 className={styles.title}>
+            {recipe.name} {recipe.emoji}
+          </h1>
           <span className={`${styles.statusBadge} ${canCraft ? styles.statusReady : styles.statusMissing}`}>
             {statusBadge}
           </span>
@@ -109,17 +131,21 @@ export default function RecipeDetailPage() {
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Ingredients</h2>
-            <IngredientChecklist recipe={recipe} />
+            <IngredientChecklist recipe={recipe} getItemCount={getItemCount} />
           </section>
 
           <div className={styles.actions}>
             {canCraft && (
-              <button type="button" className={styles.btnPrimary}>
+              <button type="button" className={styles.btnPrimary} onClick={() => handleCraftRecipe(recipe)}>
                 Craft {recipe.name}
               </button>
             )}
-            <Link to="/craft/table" className={styles.btn}>Open Crafting Table →</Link>
-            <Link to="/trade" className={styles.btn}>Get Ingredients →</Link>
+            <Link to="/craft/table" className={styles.btn}>
+              Open Crafting Table →
+            </Link>
+            <Link to="/trade" className={styles.btn}>
+              Get Ingredients →
+            </Link>
           </div>
         </div>
       </div>

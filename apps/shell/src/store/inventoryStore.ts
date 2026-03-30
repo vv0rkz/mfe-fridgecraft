@@ -3,6 +3,25 @@ import { persist } from 'zustand/middleware'
 
 export type Inventory = Record<string, number>
 
+export type ItemStack = {
+  item: string
+  count: number
+}
+
+export type CraftRecipeInput = {
+  recipeId: string
+  consumes: ItemStack[]
+  produces: ItemStack[]
+}
+
+export type CraftRecipeResult =
+  | { ok: true }
+  | {
+      ok: false
+      reason: 'unknown_recipe' | 'missing_ingredients'
+      missing?: ItemStack[]
+    }
+
 type InventoryStore = {
   // ─── State ───
   inventory: Inventory
@@ -11,11 +30,12 @@ type InventoryStore = {
 
   // ─── Inventory actions ───
   addItem: (item: string, count: number) => void
-  removeItem: (item: string, count: number) => boolean  // false если не хватает
+  removeItem: (item: string, count: number) => boolean // false если не хватает
   getItemCount: (item: string) => number
-  hasItems: (requirements: { item: string; count: number }[]) => boolean
+  hasItems: (requirements: ItemStack[]) => boolean
 
   // ─── Recipe actions ───
+  craftRecipe: (input: CraftRecipeInput) => CraftRecipeResult
   discoverRecipe: (recipeId: string) => void
   isRecipeKnown: (recipeId: string) => boolean
 
@@ -27,16 +47,14 @@ type InventoryStore = {
 }
 
 const INITIAL_STATE = {
-  inventory: {} as Inventory,
+  inventory: { wheat: 5, potato: 2 } as Inventory,
   knownRecipes: ['bread'] as string[],
   unlockedPlots: 2,
 }
 
 function dispatchInventoryUpdate(inventory: Inventory) {
-  // Оповещаем все remotes об изменении инвентаря через CustomEvent
-  window.dispatchEvent(
-    new CustomEvent('fridgecraft:inventory-updated', { detail: { inventory } })
-  )
+  // TODO: Оповестить все remotes об изменении инвентаря через CustomEvent.
+  // window.dispatchEvent(new CustomEvent('fridgecraft:inventory-updated', { detail: { inventory } }))
 }
 
 export const useInventoryStore = create<InventoryStore>()(
@@ -45,49 +63,83 @@ export const useInventoryStore = create<InventoryStore>()(
       ...INITIAL_STATE,
 
       addItem: (item, count) => {
-        // TODO: добавить count единиц item в инвентарь
-        // после set() вызвать dispatchInventoryUpdate с новым инвентарём
+        // TODO:
+        // 1. Взять текущий inventory из store.
+        // 2. Посчитать текущее количество item через inventory[item] ?? 0.
+        // 3. Собрать nextInventory с увеличенным количеством.
+        // 4. Сохранить nextInventory через set({ inventory: nextInventory }).
+        // 5. Вызвать dispatchInventoryUpdate(nextInventory).
       },
 
       removeItem: (item, count) => {
-        // TODO: проверить что item >= count в инвентаре
-        // если нет — вернуть false (не хватает)
-        // если да — вычесть count, удалить ключ если стало 0
-        // вызвать dispatchInventoryUpdate, вернуть true
-        return false
+        // TODO:
+        // 1. Взять текущее количество item из inventory.
+        // 2. Если currentCount < count, вернуть false.
+        // 3. Иначе вычислить nextCount = currentCount - count.
+        // 4. Собрать nextInventory:
+        //    - если nextCount === 0, удалить ключ item
+        //    - иначе записать item: nextCount
+        // 5. Сохранить nextInventory в store.
+        // 6. Вызвать dispatchInventoryUpdate(nextInventory).
+        // 7. Вернуть true.
+        return true
       },
 
       getItemCount: (item) => {
-        // TODO: вернуть количество item из инвентаря (0 если нет)
-        return 0
+        return get().inventory[item] ?? 0
       },
 
-      hasItems: (requirements) => {
-        // TODO: проверить каждый requirement через getItemCount
-        // вернуть true только если ВСЕ выполнены
-        return false
+      hasItems: (requirements: ItemStack[]) => {
+        for (const { item, count } of requirements) {
+          if (count > get().getItemCount(item)) {
+            return false
+          }
+        }
+        return true
+      },
+
+      craftRecipe: ({ recipeId, consumes, produces }) => {
+        if (!get().isRecipeKnown(recipeId)) {
+          return { ok: false, reason: 'unknown_recipe' }
+        }
+        const nextInventory = { ...get().inventory }
+        for (const { item, count } of consumes) {
+          nextInventory[item] -= count
+        }
+        for (const { item, count } of produces) {
+          nextInventory[item] += count
+        }
+        set({ inventory: nextInventory })
+        dispatchInventoryUpdate(nextInventory)
+        return { ok: true }
       },
 
       discoverRecipe: (recipeId) => {
-        // TODO: добавить recipeId в knownRecipes если его там ещё нет
+        // TODO:
+        // 1. Проверить, что recipeId еще не лежит в knownRecipes.
+        // 2. Если рецепта нет, добавить его в knownRecipes.
+        // 3. Если уже есть, ничего не делать.
+        void recipeId
       },
 
       isRecipeKnown: (recipeId) => {
-        // TODO: проверить есть ли recipeId в knownRecipes
-        return false
+        return get().knownRecipes.includes(recipeId)
       },
 
       unlockPlot: () => {
-        // TODO: увеличить unlockedPlots на 1
+        // TODO:
+        // 1. Взять текущее значение unlockedPlots.
+        // 2. Увеличить его на 1 через set().
       },
 
       resetAll: () => {
-        // TODO: сбросить стейт к INITIAL_STATE
-        // вызвать dispatchInventoryUpdate с пустым инвентарём
+        // TODO:
+        // 1. Сбросить store к INITIAL_STATE.
+        // 2. Вызвать dispatchInventoryUpdate(INITIAL_STATE.inventory).
       },
     }),
     {
       name: 'fridgecraft-store',
-    }
-  )
+    },
+  ),
 )
