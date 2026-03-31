@@ -1,0 +1,8 @@
+/* Стили для standalone-режима (localhost:3001) — shell не загружает global.css */
+html, body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}

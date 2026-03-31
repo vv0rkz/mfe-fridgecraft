@@ -5,54 +5,94 @@
 
 ---
 
+## 🗺️ Концепция
+
+**FridgeCraft** — Minecraft-тематическое веб-приложение с полноценным game loop.
+
+```
+🌾 Вырасти ингредиенты (Farm)
+     ↓
+🏘️ Обменяй у жителей (Village Market)
+     ↓
+🔨 Скрафти еду в сетке 3×3 (Crafting Table)
+     ↓
+📖 Открой новые рецепты (Recipe Book)
+```
+
+| Экран | Путь | Remote |
+|-------|------|--------|
+| 📖 Recipe Book | `/` | mf-recipes |
+| 🌾 Farm | `/craft/farm` | mf-craft |
+| 🔨 Crafting Table | `/craft/table` | mf-craft |
+| 🏘️ Village Market | `/trade` | mf-trade |
+
+### Game Loop
+
+```
+Старт: 2 грядки разблокированы, знаешь только рецепт Bread
+    ↓
+Посади Wheat → собери урожай (real-time таймер) → +3 Wheat в инвентарь
+    ↓
+Продай Wheat у Farmer → +1 Emerald
+    ↓
+Купи 3-ю грядку (💎×3) → теперь можно растить больше культур
+    ↓
+Поставь Wheat×3 в сетке 3×3 → скрафти Bread ✅
+    ↓
+Поэкспериментируй с другими комбинациями → "Recipe Discovered! 🎉 Mushroom Stew"
+    ↓
+Или купи Recipe Book у Cleric → открой рецепт сразу
+```
+
+### Стейт в localStorage
+
+```
+'fridgecraft:inventory'       → { "Wheat": 5, "Emerald": 1 }
+'fridgecraft:farm'            → [{ id, cropId, plantedAt, unlockedAt }]
+'fridgecraft:plots-unlocked'  → 2
+'fridgecraft:recipes-known'   → ["bread"]
+'fridgecraft:crafting-grid'   → [null, "Wheat", null, ...]  // 9 ячеек
+```
+
+**Инвентарь** живёт в shell — все remotes читают/пишут через CustomEvents.
+
+---
+
 ## 🗺️ Roadmap
 
 ```
 v0.x — Скелет монорепо и Module Federation   ✅
-v0.5 — Дизайн: референсы, токены, макет
-v1.x — mf-recipes: каталог и детальная страница
-v1.5 — Выделяем ui-kit из того что написали
-v2.x — mf-cart: корзина и заказ
-v3.x — mf-craft: CraftMode (killer-фича)
-v4.x — Интеграция и полировка
+v0.5 — Дизайн: токены, тёмная тема
+v1.x — mf-recipes: Recipe Book (известные/неизвестные рецепты)
+v2.x — mf-craft: Farm + Crafting Table 3×3
+v2.5 — Выделяем ui-kit из написанного
+v3.x — mf-trade: Village Market (торговля + разблокировка грядок)
+v4.x — Полировка
 ```
 
 > **Принцип:** сначала делаем — потом абстрагируем.
-> ui-kit появляется когда видим повторение, а не заранее.
 
 ---
 
 ## v0.x — Скелет ✅
 
 ### v0.1 — Монорепо ✅
-- [x] Создать `pnpm-workspace.yaml` с `apps/*` и `packages/*`
-- [x] Создать корневой `package.json` со скриптом `"dev": "pnpm --parallel -r dev"`
-- [x] Создать папки: `apps/shell`, `apps/mf-recipes`, `apps/mf-cart`, `apps/mf-craft`, `packages/ui-kit`
-- [x] В каждой папке `pnpm init`
+- [x] `pnpm-workspace.yaml` с `apps/*` и `packages/*`
+- [x] Корневой `package.json` со скриптом `dev`
+- [x] Папки: `apps/shell`, `apps/mf-recipes`, `apps/mf-cart`, `apps/mf-craft`, `packages/ui-kit`
 - [x] `pnpm dev` из корня — нет ошибок
 
----
-
 ### v0.2 — Webpack + Module Federation ✅
-- [x] Зависимости в shell и mf-recipes (`react`, `react-dom`, `react-router-dom`, `webpack`, `@module-federation/enhanced`, etc.)
-- [x] `apps/shell/webpack.config.js` с `ModuleFederationPlugin` (remotes: recipes@3001)
-- [x] `apps/shell/src/index.ts`, `bootstrap.tsx`, `App.tsx`, `public/index.html`
-- [x] `apps/mf-recipes/webpack.config.js` с `exposes: { './App': './src/App' }`
-- [x] `apps/mf-recipes/src/index.ts`, `bootstrap.tsx`, `App.tsx`
+- [x] Зависимости в shell и mf-recipes
+- [x] `webpack.config.js` с `ModuleFederationPlugin` в обоих
+- [x] `src/index.ts`, `bootstrap.tsx`, `App.tsx`, `public/index.html`
 - [x] `tsconfig.json` в shell и mf-recipes
 
-**Результат:** `localhost:3000` — Shell, `localhost:3001` — Recipes ✅
-
----
-
 ### v0.3 — Shell загружает remote ✅
-- [x] `react-router-dom` в `shared` в обоих webpack конфигах
-- [x] `apps/shell/src/remotes/RecipesApp.tsx` с `React.lazy` + `Suspense`
-- [x] `App.tsx` shell: `BrowserRouter` + `Routes` + `Route path="/" → RecipesApp`
-- [x] `apps/shell/src/types.d.ts` с `declare module 'recipes/App'`
-- [x] CORS-заголовки на dev-серверах (shell + mf-recipes)
-- [x] `tsconfig paths`: `recipes/*` → `../mf-recipes/src/*` (Ctrl+Click навигация)
-- [ ] Повторить для mf-cart и mf-craft — при работе над v2/v3
+- [x] `react-router-dom` в `shared`
+- [x] `RecipesApp.tsx` с `React.lazy` + `Suspense`
+- [x] CORS-заголовки на dev-серверах
+- [x] `tsconfig paths` для Ctrl+Click навигации
 
 **Результат:** `localhost:3000` показывает контент из mf-recipes ✅
 
@@ -60,236 +100,344 @@ v4.x — Интеграция и полировка
 
 ## v0.5 — Дизайн
 
-**Цель:** зафиксировать внешний вид до начала вёрстки. Не пишем компоненты — только токены и референсы.
+**Цель:** зафиксировать визуальный язык до начала вёрстки.
 
-- [ ] Выбрать референс (v0.dev / Dribbble / Figma Community) — скриншот в `docs/design/reference.png`
-- [ ] Зафиксировать цветовую палитру в `docs/design/tokens.md`:
-  - Background: `#F7F8FA`
-  - Surface (карточки): `#FFFFFF`
-  - Accent: `#22C55E` (зелёный)
-  - Text primary: `#111827`
-  - Text secondary: `#6B7280`
-  - Border: `#E5E7EB`
-- [ ] Зафиксировать типографику: шрифт, размеры (xs/sm/base/lg/xl/2xl), веса
-- [ ] Создать `apps/mf-recipes/src/styles/tokens.css` с CSS-переменными
+- [ ] Референсы из v0.dev → скриншоты в `docs/design/`
+- [ ] Создать `apps/shell/src/styles/tokens.css`:
+
+```css
+/* Цвета */
+--color-bg:           #0f0f0f;
+--color-surface:      #1c1c1c;
+--color-surface-2:    #2a2a2a;
+--color-border:       #3a3a3a;
+--color-accent:       #5dbb63;
+--color-accent-hover: #4aa350;
+--color-gold:         #f5c542;   /* Emerald / валюта */
+--color-text:         #e8e8e8;
+--color-text-muted:   #888888;
+--color-danger:       #e05252;
+
+/* Типографика */
+--font-base: 'Inter', sans-serif;
+--text-xs: 12px;  --text-sm: 14px;  --text-base: 16px;
+--text-lg: 20px;  --text-xl: 24px;  --text-2xl: 32px;
+
+/* Отступы */
+--space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+--space-4: 16px;  --space-6: 24px;  --space-8: 32px;
+
+/* Радиусы */
+--radius-sm: 4px;  --radius-md: 8px;  --radius-lg: 12px;
+--shadow-card: 0 2px 8px rgba(0,0,0,0.4);
+```
+
 - [ ] Создать `apps/shell/src/styles/global.css` — reset + подключение токенов
+- [ ] Добавить `css-loader` + `style-loader` в webpack shell и mf-recipes
+- [ ] Подключить `tokens.css` в `bootstrap.tsx` обоих
 
-**Результат:** есть `tokens.css` с переменными, есть скриншот референса в `docs/`
-
----
-
-## v1.x — mf-recipes
-
-### v1.0 — MSW моки для рецептов
-**Цель:** MSW перехватывает запросы, возвращает список рецептов
-
-- [ ] Установить MSW: `pnpm add -D msw --filter mf-recipes`
-- [ ] `npx msw init public/ --save` в папке mf-recipes
-- [ ] Создать `src/mocks/handlers.ts` — `GET /api/recipes` и `GET /api/recipes/:id`
-- [ ] Создать `src/mocks/browser.ts` — `setupWorker(...handlers)`
-- [ ] Подключить в `bootstrap.tsx` через `enableMocking().then(...)`
-- [ ] Минимум 6 рецептов (категории: breakfast, lunch, dinner; сложность: easy/medium/hard)
-
-**Проверка:** DevTools → Network → `GET /api/recipes` → 200 с данными
+**Результат:** `localhost:3000` имеет тёмный фон #0f0f0f ✓
 
 ---
 
-### v1.1 — RTK Query
-**Цель:** данные из MSW приходят через RTK Query
+## v1.x — mf-recipes: Recipe Book
 
-- [ ] Установить: `@reduxjs/toolkit`, `react-redux` в mf-recipes
-- [ ] Создать `src/api/recipesApi.ts` — `createApi` с `getRecipes` и `getRecipeById`
-- [ ] Создать `src/store.ts` — `configureStore`
-- [ ] Обернуть `App` в `<Provider>` в `bootstrap.tsx`
-- [ ] Создать `src/pages/CatalogPage.tsx` — вызвать `useGetRecipesQuery`, вывести названия
-- [ ] Добавить route `/` → `CatalogPage` в `App.tsx` mf-recipes
+### v1.0 — Стейт: инвентарь + известные рецепты в shell ✅
 
-**Результат:** `CatalogPage` показывает список названий рецептов
-
----
-
-### v1.2 — CSS-инфраструктура + CatalogPage layout
-**Цель:** настроить CSS Modules, подключить токены, сделать базовую вёрстку страницы
-
-- [ ] Добавить `css-loader` + `style-loader` в webpack mf-recipes и shell
-- [ ] Подключить `tokens.css` в `bootstrap.tsx` mf-recipes
-- [ ] Сетка каталога: 3 колонки на десктопе, 2 на планшете, 1 на мобильном
-- [ ] Фон страницы `#F7F8FA`, заголовок "Рецепты", счётчик "N рецептов"
-
-**Результат:** пустая сетка со стилями из токенов
-
----
-
-### v1.3 — RecipeCard
-**Цель:** карточка рецепта с дизайном
-
-- [ ] Создать `src/components/RecipeCard/RecipeCard.tsx`
-  - пропсы: `id`, `name`, `time`, `calories`, `difficulty`, `category`, `imageUrl`
-- [ ] Создать `RecipeCard.module.css` — белая карточка, тень, скруглённые углы
-- [ ] Бейджи difficulty и category — цветные pill-кнопки
-- [ ] Hover-эффект на карточке
-- [ ] Клик → переход на `/recipes/:id`
-
-**Результат:** `localhost:3001` — 6 карточек с фото, названием, временем, калориями
-
----
-
-### v1.4 — FilterBar
-**Цель:** фильтрация рецептов по категории
-
-- [ ] Создать `src/components/FilterBar/FilterBar.tsx` — pill-кнопки: All, Breakfast, Lunch, Dinner, Easy, Under 30 min
-- [ ] Активная кнопка — зелёная (`--color-accent`), неактивная — серая
-- [ ] Фильтрация на клиенте по `category` и `difficulty`
-
-**Результат:** клик на "Breakfast" — только завтраки. "All" — все рецепты.
-
----
-
-### v1.5 — RecipeDetailPage
-**Цель:** детальная страница рецепта
-
-- [ ] Добавить route `/recipes/:id` в `App.tsx` mf-recipes
-- [ ] Создать `src/pages/RecipeDetailPage.tsx`
-- [ ] Левая колонка (60%): hero фото + название + бейджи + шаги приготовления
-- [ ] Правая колонка (40%) sticky: ингредиенты с чекбоксами + сумма + кнопка "Order Products"
-- [ ] Кнопка "Order Products":
-  ```js
-  window.dispatchEvent(new CustomEvent('fridgecraft:add-to-cart', { detail: { ingredients } }))
+- [x] Создать `apps/shell/src/store/inventoryStore.ts` (Zustand):
+  ```ts
+  type InventoryStore = {
+    inventory: Record<string, number>     // { "Wheat": 5 }
+    knownRecipes: string[]                // ["bread", "mushroom_stew"]
+    unlockedPlots: number                 // 2
+    addItem: (item: string, count: number) => void
+    removeItem: (item: string, count: number) => void
+    discoverRecipe: (recipeId: string) => void
+    unlockPlot: () => void
+  }
   ```
-- [ ] "← Назад к каталогу" ссылка
+- [x] Zustand persist middleware → автосохранение в localStorage
+- [x] При изменении диспатч `CustomEvent 'fridgecraft:inventory-updated'`
+- [x] Начальное состояние: `{ knownRecipes: ["bread"], unlockedPlots: 2 }`
+- [x] `window.__fridgecraft = { useInventoryStore }` — доступ из remotes
+- [x] Типизация в `types.d.ts`: `Window.__fridgecraft` + `WindowEventMap`
 
-**Результат:** открываешь рецепт → видишь ингредиенты → "Order Products" → в консоли событие
-
----
-
-### v1.6 — Header в shell
-**Цель:** общий хедер с навигацией и счётчиком корзины
-
-- [ ] Создать `apps/shell/src/components/Header/Header.tsx`
-- [ ] Логотип "FridgeCraft" слева
-- [ ] Кнопка "CraftMode" — зелёная — `/craft`
-- [ ] Иконка корзины с бейджем (количество) справа
-- [ ] shell слушает `fridgecraft:add-to-cart` → увеличивает счётчик
-
-**Результат:** хедер на всех страницах. "Order Products" → счётчик растёт.
+**Результат:** DevTools → Application → localStorage → ключ `fridgecraft-store` ✅
 
 ---
 
-## v1.5 — Выделяем ui-kit
+### v1.1 — Данные рецептов
 
-**Цель:** смотрим что повторяется в mf-recipes, выносим в пакет
+- [ ] Создать `apps/mf-recipes/src/data/recipes.ts` — 12 Minecraft-блюд:
 
-- [ ] Провести ревью mf-recipes — выписать повторяющиеся UI-элементы
-- [ ] Настроить `packages/ui-kit/package.json`: `name: "@fridgecraft/ui-kit"`, `main`, `types`
-- [ ] Создать `packages/ui-kit/tsconfig.json` с `"declaration": true`
-- [ ] Перенести `Button` (из Header/FilterBar) → `packages/ui-kit/src/Button/`
-- [ ] Перенести `Badge` (difficulty/category бейджи) → `packages/ui-kit/src/Badge/`
-- [ ] Перенести `Card` (основа RecipeCard) → `packages/ui-kit/src/Card/`
-- [ ] Создать `packages/ui-kit/src/index.ts` — экспортирует всё
-- [ ] Установить ui-kit в mf-recipes: `pnpm add @fridgecraft/ui-kit --workspace --filter mf-recipes`
-- [ ] Установить ui-kit в shell: `pnpm add @fridgecraft/ui-kit --workspace --filter shell`
-- [ ] Заменить локальные компоненты в mf-recipes на импорты из `@fridgecraft/ui-kit`
+| id | Название | Ингредиенты | Голод |
+|----|----------|-------------|-------|
+| bread | Bread | Wheat×3 | 5 |
+| cake | Cake | Wheat×3, Egg×2, Sugar×2, Milk×3 | 14 |
+| mushroom_stew | Mushroom Stew | Brown Mushroom×1, Red Mushroom×1, Bowl×1 | 6 |
+| pumpkin_pie | Pumpkin Pie | Pumpkin×1, Sugar×1, Egg×1 | 8 |
+| baked_potato | Baked Potato | Potato×1 (furnace) | 5 |
+| cooked_chicken | Cooked Chicken | Raw Chicken×1 (furnace) | 6 |
+| cooked_beef | Cooked Beef (Steak) | Raw Beef×1 (furnace) | 8 |
+| golden_apple | Golden Apple | Apple×1, Gold Ingot×8 | 4 |
+| golden_carrot | Golden Carrot | Carrot×1, Gold Nugget×8 | 6 |
+| melon_slice | Melon Slice | Melon×1 | 2 |
+| cookie | Cookie | Wheat×2, Cocoa Beans×1 | 2 |
+| beetroot_soup | Beetroot Soup | Beetroot×6, Bowl×1 | 6 |
 
-**Результат:** mf-recipes работает как раньше, но использует компоненты из ui-kit
+- [ ] Добавить паттерн крафта для каждого рецепта (9 ячеек, null = пусто):
+  ```ts
+  type Recipe = {
+    id: string
+    name: string
+    emoji: string
+    imageUrl: string
+    category: 'crops' | 'meat' | 'sweets' | 'soups' | 'special'
+    hungerRestored: number
+    saturation: number
+    craftingPattern: (string | null)[]  // массив 9 элементов, сетка 3×3
+    shapeless: boolean                  // true = порядок не важен (Cookie, Stew)
+    description: string
+  }
+  ```
 
----
-
-## v2.x — mf-cart
-
-### v2.0 — Webpack + MSW для mf-cart
-**Цель:** настроить mf-cart как microfrontend, подключить моки
-
-- [ ] Настроить webpack в mf-cart (аналогично mf-recipes, порт 3002)
-- [ ] Добавить mf-cart как remote в shell (порт 3002)
-- [ ] Установить MSW в mf-cart
-- [ ] Handlers: `GET /api/cart`, `POST /api/cart/add`, `DELETE /api/cart/:id`
-- [ ] Мок `GET /api/stores/prices?product=...` — цена в разных магазинах
-
----
-
-### v2.1 — CartPage: список продуктов
-- [ ] shell ловит `fridgecraft:add-to-cart` → сохраняет в localStorage → навигирует на `/cart`
-- [ ] `CartPage` читает localStorage, показывает продукты
-- [ ] Группировка по рецепту (заголовок + крестик убрать группу)
-- [ ] Чекбокс "есть дома" — зачёркивает продукт, убирает из суммы
-- [ ] Счётчик количества `[−][1][+]`
-
-**Результат:** рецепт → "Order Products" → попасть в корзину → список продуктов
+**Результат:** 12 рецептов с паттернами крафта готовы
 
 ---
 
-### v2.2 — Выбор магазина и заказ
-- [ ] Секция выбора магазина: ВкусВилл, Пятёрочка, Лента
-- [ ] При выборе магазина — пересчёт цен через MSW
-- [ ] Итого: subtotal + delivery + total
-- [ ] `POST /api/cart/order` → мок с `orderId` → "Заказ принят! #orderId"
+### v1.2 — RecipeCard + CatalogPage
 
-**Результат:** полный флоу рецепт → корзина → магазин → заказ → подтверждение
+- [ ] Создать `src/components/RecipeCard/RecipeCard.tsx`:
+  - Minecraft-спрайт (img с `minecraft.wiki`)
+  - Название + сердечки голода (♥ × N)
+  - Бейдж категории
+  - Состояния:
+    - ✅ **Known + Can Craft** — зелёная рамка, кнопка "Craft →"
+    - 🔵 **Known + Missing** — синяя рамка, текст "Need: Wheat ×2"
+    - 🔒 **Unknown** — размытое фото, "???" вместо названия, "Discover this recipe"
+- [ ] `CatalogPage` — сетка 3 колонки
+- [ ] Клик на Known карточку → `/recipes/:id`
+- [ ] Клик на Unknown карточку → подсказка "Try crafting it or buy from Cleric"
 
----
-
-## v3.x — mf-craft
-
-### v3.0 — Webpack + MSW для mf-craft
-- [ ] Настроить webpack в mf-craft (порт 3003)
-- [ ] Handler: `GET /api/craft/match?ingredients[]=...&tools[]=...`
-- [ ] 6 рецептов с разным `matchPercentage`, `missingIngredients`, `requiredTools`
-
----
-
-### v3.1 — CraftPage: три колонки
-- [ ] `src/pages/CraftPage.tsx` — layout `25% / 30% / 45%`, `height: 100vh - header`
-- [ ] Каждая колонка `overflow-y: auto`
+**Результат:** известные рецепты видны, неизвестные — заблюрены с "???"
 
 ---
 
-### v3.2 — FridgePanel (левая колонка)
-- [ ] Поиск по ингредиентам
-- [ ] Клик — выделяет (зелёная рамка), выделенные — в начале списка
+### v1.3 — FilterBar + счётчики
+
+- [ ] Pill-кнопки: All, Crops, Meat, Sweets, Soups, Special
+- [ ] Счётчики в хедере фильтра: "Can Craft: 1 / 12 | Discovered: 3 / 12"
+- [ ] Фильтр "Can Craft" — показывает только то что можно скрафтить прямо сейчас
 
 ---
 
-### v3.3 — KitchenPanel (центральная колонка)
-- [ ] Тайлы инструментов: Pan, Pot, Oven, Knife, Blender
-- [ ] Активный — зелёный, неактивный — серый
+### v1.4 — RecipeDetailPage
+
+- [ ] Route `/recipes/:id` (только для Known рецептов)
+- [ ] Левая колонка: большой спрайт + лор-описание + характеристики
+- [ ] Правая колонка sticky:
+  - Паттерн крафта: мини-превью сетки 3×3 (статичный, показывает раскладку)
+  - Чеклист ингредиентов: ✅ Wheat ×3 (have 5) / ❌ Sugar ×2 (have 0)
+  - Кнопка "Open Crafting Table →" — переход на `/craft/table`
+  - Кнопка "Get Ingredients →" — переход на `/trade`
 
 ---
 
-### v3.4 — ResultsPanel (правая колонка)
-- [ ] RTK Query → `/api/craft/match` при изменении ингредиентов/инструментов
-- [ ] Карточка: фото + название + progress bar (% match) + "Missing" + "Requires"
-- [ ] Сортировка по % убыванию
-- [ ] "Order missing" → `fridgecraft:add-to-cart` → корзина
+### v1.5 — Header в shell
 
-**Результат:** Tomato + Egg + Pan → рецепты с %. "Order missing" → корзина.
+- [ ] `apps/shell/src/components/Header/Header.tsx`
+- [ ] Логотип "⚒️ FridgeCraft" слева
+- [ ] Навигация: Recipe Book | Farm | Trade
+- [ ] Инвентарь справа: топ-4 ингредиента (emoji + число) + "... N more"
+- [ ] 💎 Emerald счётчик отдельно (валюта)
+- [ ] Слушает `fridgecraft:inventory-updated` → обновляет отображение
+
+---
+
+## v2.x — mf-craft: Farm + Crafting Table 3×3
+
+### v2.0 — Webpack для mf-craft
+
+- [ ] `apps/mf-craft/webpack.config.js` (порт 3003) + CORS
+- [ ] Добавить в shell как remote `craft`
+- [ ] `tsconfig paths`: `craft/*` → `../mf-craft/src/*`
+- [ ] `App.tsx` с двумя табами через `react-router-dom`: Farm | Crafting Table
+
+---
+
+### v2.1 — Farm: данные + стор
+
+- [ ] Создать `src/data/crops.ts` — 8 культур:
+
+| id | Emoji | Название | Время роста | Урожай |
+|----|-------|----------|-------------|--------|
+| wheat | 🌾 | Wheat | 45 сек | ×3 |
+| carrot | 🥕 | Carrot | 40 сек | ×3 |
+| potato | 🥔 | Potato | 40 сек | ×2 |
+| melon | 🍉 | Melon | 60 сек | ×1 |
+| mushroom | 🍄 | Brown Mushroom | 30 сек | ×2 |
+| sugar_cane | 🎋 | Sugar Cane | 50 сек | ×2 |
+| beetroot | 🫚 | Beetroot | 55 сек | ×3 |
+| pumpkin | 🎃 | Pumpkin | 70 сек | ×1 |
+
+- [ ] Стор фермы читает `unlockedPlots` из shell-стора
+- [ ] `plantCrop(plotId, cropId)` — сохраняет `plantedAt: Date.now()`
+- [ ] `harvestCrop(plotId)` — вызывает `addItem()` shell-стора
+
+---
+
+### v2.2 — Farm: UI с таймерами
+
+- [ ] `src/components/PlotCard/PlotCard.tsx`:
+  - **Locked** 🔒: тёмная карточка, цена разблокировки `💎 ×N`, кнопка "Unlock"
+  - **Empty**: пунктирная рамка, кнопка "🌱 Plant" → выбор культуры из списка
+  - **Growing**: emoji культуры + circular progress bar + `0:24 remaining`
+  - **Ready** ✅: пульсирующий зелёный контур + `"Harvest 🌾 ×3"` кнопка
+- [ ] 9 карточек (3×3 сетка): 2 разблокированы, 7 заперты с нарастающей ценой
+- [ ] `useEffect` + `setInterval(1000)` + cleanup — обновление таймеров
+- [ ] Таймер считается от `plantedAt` timestamp — работает после перезагрузки
+
+**Проверка:** посадил Wheat → закрыл вкладку → открыл через минуту → Wheat готов
+
+---
+
+### v2.3 — Crafting Table: сетка 3×3
+
+**Цель:** настоящий Minecraft крафт
+
+- [ ] `src/pages/CraftingTablePage.tsx`:
+  - **Слева**: инвентарь — список ингредиентов с количеством (клик → выбрать)
+  - **Центр**: сетка 3×3 (`CraftingGrid`) + стрелка → результат
+  - **Справа**: слот результата + кнопка "Craft!" + название результата
+
+- [ ] `src/components/CraftingGrid/CraftingGrid.tsx`:
+  - 9 ячеек, каждая принимает ингредиент
+  - Клик на ячейку: если выбран ингредиент в инвентаре — ставим его
+  - Правый клик / повторный клик — убрать ингредиент
+  - При изменении сетки → `checkRecipe(grid)` → показываем результат
+
+- [ ] `src/utils/recipeEngine.ts` — логика матчинга:
+  ```ts
+  // Shaped recipe: паттерн точный (Bread = Wheat в первой строке)
+  // Shapeless recipe: набор ингредиентов без учёта позиции (Cookie, Stew)
+  function checkRecipe(grid: (string | null)[]): Recipe | null
+  ```
+
+- [ ] При успешном крафте неизвестного рецепта:
+  - Toast: "🎉 Recipe Discovered! Mushroom Stew"
+  - Вызов `discoverRecipe(recipeId)` в shell-сторе
+
+- [ ] При клике "Craft!": `-ингредиенты` из инвентаря, `+1 результат`
+
+**Результат:**
+- Поставил Wheat×3 в первую строку → справа появился 🍞 Bread
+- Поставил незнакомую комбинацию → "Recipe Discovered! 🎉"
+- Bought plot: кнопка "Unlock Plot 💎×3" в Farm → `-3 Emerald`, `+1 разблокированная грядка`
+
+---
+
+## v2.5 — Выделяем ui-kit
+
+- [ ] Ревью mf-recipes + mf-craft — выписать повторяющиеся элементы
+- [ ] Ожидаемо: `Button`, `Badge`, `ProgressBar` (circular + linear), `Card`, `Tooltip`
+- [ ] Настроить `packages/ui-kit/package.json` + `tsconfig.json`
+- [ ] Перенести компоненты, заменить импорты
+- [ ] Storybook: `pnpm add -D @storybook/react --filter ui-kit`
+- [ ] Stories: все варианты каждого компонента
+
+**Результат:** Storybook запускается, оба remote используют ui-kit
+
+---
+
+## v3.x — mf-trade: Village Market
+
+### v3.0 — Webpack для mf-trade
+
+- [ ] Переименовать/перенастроить `apps/mf-cart` → `apps/mf-trade` (порт 3002)
+- [ ] Добавить как remote в shell
+- [ ] `tsconfig paths`: `trade/*` → `../mf-trade/src/*`
+
+---
+
+### v3.1 — Данные жителей + сделки
+
+- [ ] `src/data/villagers.ts` — 4 жителя:
+
+**🟤 Farmer Grot**
+- `Wheat×20` → `Emerald×1`
+- `Carrot×22` → `Emerald×1`
+- `Potato×26` → `Emerald×1`
+- `Emerald×1` → `Wheat×20` (обратный обмен)
+
+**⬜ Butcher Hans**
+- `Raw Chicken×14` → `Emerald×1`
+- `Emerald×1` → `Cooked Chicken×8`
+- `Emerald×1` → `Raw Beef×7`
+
+**🟣 Cleric Mira**
+- `Emerald×1` → `Sugar×5`
+- `Emerald×2` → `Cocoa Beans×3`
+- `Emerald×3` → **Recipe Book** (открывает случайный неизвестный рецепт)
+
+**🧙 Wandering Trader** (появляется каждые 5 минут, таймер)
+- `Emerald×5` → `Pumpkin×1` (редкий)
+- `Emerald×4` → `Red Mushroom×2` (редкий)
+- `Emerald×7` → **Recipe Book — Rare** (открывает Golden Apple или Golden Carrot)
+
+---
+
+### v3.2 — Village Market: UI
+
+- [ ] `src/pages/MarketPage.tsx`:
+  - 4 карточки жителей
+  - Wandering Trader: countdown "Arrives in 3:42" / "Here now! (leaves in 1:20)"
+  - Клик → раскрывается панель сделок
+
+- [ ] `src/components/TradePanel/TradePanel.tsx`:
+  - Список сделок: `[🌾 Wheat ×20]` `→` `[💎 Emerald ×1]` `[Trade]`
+  - Кнопка "Trade" — зелёная если хватает, серая если нет, красный tooltip что не хватает
+  - После сделки: `+ингредиент`, `-цена`, toast "Trade complete!"
+
+- [ ] Разблокировка грядок прямо на странице Market (у Farmer):
+  - Секция "Buy Farm Plots": `Plot #3 — 💎×3` | `Plot #4 — 💎×5` | ...
+
+**Результат:** продал Wheat → получил Emerald → купил Recipe Book → открыл новый рецепт 🎉
 
 ---
 
 ## v4.x — Полировка
 
 ### v4.1 — ErrorBoundary
-- [ ] `ErrorBoundary` в shell — обёртка каждого remote
-- [ ] Fallback: "Сервис временно недоступен"
-- [ ] Проверка: остановить mf-recipes → shell показывает fallback, остальные работают
+- [ ] Обернуть каждый remote в `ErrorBoundary` + `Suspense`
+- [ ] Fallback: "⚠️ This area is currently unavailable. Try refreshing."
+- [ ] Проверка: остановить mf-recipes → shell показывает fallback, craft и trade работают
 
 ### v4.2 — Skeleton loading
-- [ ] `Skeleton` компонент в ui-kit
-- [ ] RecipeCard Skeleton, ResultsPanel Skeleton, CartPage Skeleton
+- [ ] `Skeleton` в ui-kit
+- [ ] RecipeCard Skeleton (пока грузится каталог)
+- [ ] PlotCard Skeleton (пока инициализируется Farm)
 
-### v4.3 — README и деплой
-- [ ] `README.md` с описанием, скриншотами, инструкцией
-- [ ] Скриншоты всех экранов в `docs/screenshots/`
-- [ ] Проверить `pnpm dev` с нуля (чистый clone)
+### v4.3 — README + демо
+- [ ] `README.md`: концепция, скриншоты, инструкция запуска
+- [ ] Скриншоты в `docs/screenshots/`
+- [ ] GIF: gameplay-флоу Farm → Craft (открытие рецепта) → Trade → Recipe Book
+
+### v4.4 — JSON-конфиг роутинга для микрофронтов
+- [ ] Вынести маршруты shell в JSON/TS-конфиг (path → remote + basePath)
+- [ ] Каждый remote описывает свои пути (например `recipes.routes.json`)
+- [ ] Shell читает конфиг и строит `<Routes>` динамически
+- [ ] Убрать хардкод `path="*"` / `path="/recipes/*"` из shell App.tsx
+
+**Результат:** добавление нового remote = правка конфига, без изменений shell-кода
 
 ---
 
 ## Правила работы с задачами
 
-1. **Одна версия = одна задача в Cursor.** Не делать v1.3 и v1.4 за раз.
-2. **Проверяй результат каждой версии** прежде чем идти дальше.
-3. **ui-kit не трогаем** пока не закончена хотя бы v1.5 (RecipeDetailPage).
-4. **Застрял?** Напиши: `Я делаю задачу v1.3 FridgeCraft. Застрял на [шаг]. Вот код: [код]`
-5. **Текущая задача:** v0.5
+1. **Одна версия = одна задача.** Не делать v1.2 и v1.3 за раз.
+2. **Проверяй результат** каждой версии прежде чем идти дальше.
+3. **ui-kit не трогаем** до v2.5.
+4. **Текущая задача:** v1.1 — Данные рецептов
 
 ---
 

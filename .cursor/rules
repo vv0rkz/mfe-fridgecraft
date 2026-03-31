@@ -146,6 +146,13 @@ pnpm run _ push-release                 # запушить релиз в main
 - Перед началом новой версии → `pnpm run _ create-task "v0.2 Webpack + MF"`
 - После завершения версии → `pnpm run _ release`
 - Нашёл баг → `pnpm run _ create-bug "Описание"`
+- **Работа с feature/fix:** сначала `create-task` / `create-bug` → получаешь #N → ветка `feature/#N-...` или `fix/#N-...`
+
+### Ветки (pre-push)
+- **main** — protected, пушить только через PR
+- **Release/X.Y.Z-description** — релизы (сортируется первым)
+- **feature/#N-description** — фичи (N = номер issue, # линкует в GitHub)
+- **fix/#N-description** — багфиксы
 
 ## Текущий статус
 

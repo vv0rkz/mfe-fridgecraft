@@ -1,17 +1,20 @@
 #!/usr/bin/env sh
 
 CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" = "main" ]; then
-    echo "✅ Разрешённая ветка: $CURRENT_BRANCH"
-    exit 0
-fi
 
-# Простая проверка: начинается с v и есть дефис
-if ! echo "$CURRENT_BRANCH" | grep -q "^v.*-.*"; then
-    echo "❌ Неправильный формат ветки: $CURRENT_BRANCH"
-    echo "✅ Должен быть: vX.Y.Z-description"
-    echo "📝 Пример: v2.3.0-normalize-operators"
+# main — protected, пушить только через PR/merge
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo "❌ main — protected branch"
+    echo "   Создай feature/ или Release/ ветку и открой PR"
     exit 1
 fi
 
-echo "✅ Формат ветки правильный: $CURRENT_BRANCH"
+# Разрешённые форматы: Release/*, feature/*, fix/*
+if echo "$CURRENT_BRANCH" | grep -qE "^(Release/|feature/|fix/)"; then
+    echo "✅ Ветка: $CURRENT_BRANCH"
+    exit 0
+fi
+
+echo "❌ Неправильный формат ветки: $CURRENT_BRANCH"
+echo "✅ Допустимо: Release/X.Y.Z-desc, feature/#N-desc, fix/#N-desc"
+exit 1
